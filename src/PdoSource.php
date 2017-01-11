@@ -72,7 +72,37 @@ class PdoSource implements SourceInterface
         $stmt->execute();
 
         while ($row = $stmt->fetch(\PDO::FETCH_OBJ)) {
-            yield [trim($row->agent) => []];
+            $agent = trim($row->agent);
+
+            $test = [
+                'ua'         => $agent,
+                'properties' => [
+                    'Browser_Name'            => null,
+                    'Browser_Type'            => null,
+                    'Browser_Bits'            => null,
+                    'Browser_Maker'           => null,
+                    'Browser_Modus'           => null,
+                    'Browser_Version'         => null,
+                    'Platform_Codename'       => null,
+                    'Platform_Marketingname'  => null,
+                    'Platform_Version'        => null,
+                    'Platform_Bits'           => null,
+                    'Platform_Maker'          => null,
+                    'Platform_Brand_Name'     => null,
+                    'Device_Name'             => null,
+                    'Device_Maker'            => null,
+                    'Device_Type'             => null,
+                    'Device_Pointing_Method'  => null,
+                    'Device_Dual_Orientation' => null,
+                    'Device_Code_Name'        => null,
+                    'Device_Brand_Name'       => null,
+                    'RenderingEngine_Name'    => null,
+                    'RenderingEngine_Version' => null,
+                    'RenderingEngine_Maker'   => null,
+                ],
+            ];
+
+            yield [$agent => $test];
         }
     }
 }
