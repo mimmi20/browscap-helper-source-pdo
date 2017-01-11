@@ -74,7 +74,7 @@ class PdoSource implements SourceInterface
         while ($row = $stmt->fetch(\PDO::FETCH_OBJ)) {
             $agent = trim($row->agent);
 
-            yield [$agent => [
+            $test = [
                 'ua'         => $agent,
                 'properties' => [
                     'Browser_Name'            => null,
@@ -100,8 +100,9 @@ class PdoSource implements SourceInterface
                     'RenderingEngine_Version' => null,
                     'RenderingEngine_Maker'   => null,
                 ],
-            ]
             ];
+
+            yield [$agent => $test];
         }
     }
 }
