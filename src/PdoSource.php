@@ -2,8 +2,13 @@
 
 namespace BrowscapHelper\Source;
 
-use Monolog\Logger;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use UaResult\Browser\Browser;
+use UaResult\Device\Device;
+use UaResult\Engine\Engine;
+use UaResult\Os\Os;
+use Wurfl\Request\GenericRequestFactory;
 
 /**
  * Class DirectorySource
@@ -18,21 +23,33 @@ class PdoSource implements SourceInterface
     private $pdo = null;
 
     /**
-     * @param \PDO $pdo
+     * @var \Symfony\Component\Console\Output\OutputInterface
      */
-    public function __construct(\PDO $pdo)
+    private $output = null;
+
+    /**
+     * @var \Psr\Log\LoggerInterface
+     */
+    private $logger = null;
+
+    /**
+     * @param \Psr\Log\LoggerInterface                          $logger
+     * @param \Symfony\Component\Console\Output\OutputInterface $output
+     * @param \PDO                                              $pdo
+     */
+    public function __construct(LoggerInterface $logger, OutputInterface $output, \PDO $pdo)
     {
-        $this->pdo = $pdo;
+        $this->logger = $logger;
+        $this->output = $output;
+        $this->pdo    = $pdo;
     }
 
     /**
-     * @param \Monolog\Logger                                   $logger
-     * @param \Symfony\Component\Console\Output\OutputInterface $output
-     * @param int                                               $limit
+     * @param int $limit
      *
-     * @return \Generator
+     * @return string[]
      */
-    public function getUserAgents(Logger $logger, OutputInterface $output, $limit = 0)
+    public function getUserAgents($limit = 0)
     {
         $sql = 'SELECT DISTINCT SQL_BIG_RESULT HIGH_PRIORITY `agent` FROM `agents` ORDER BY `lastTimeFound` DESC, `count` DESC, `idAgents` DESC';
 
@@ -52,18 +69,11 @@ class PdoSource implements SourceInterface
     }
 
     /**
-     * @param \Monolog\Logger                                   $logger
-     * @param \Symfony\Component\Console\Output\OutputInterface $output
-     *
-     * @return \Generator
+     * @return \UaResult\Result\Result[]
      */
-    public function getTests(Logger $logger, OutputInterface $output)
+    public function getTests()
     {
         $sql = 'SELECT DISTINCT SQL_BIG_RESULT HIGH_PRIORITY `agent` FROM `agents` ORDER BY `lastTimeFound` DESC, `count` DESC, `idAgents` DESC';
-
-        if ($limit) {
-            $sql .= ' LIMIT ' . (int) $limit;
-        }
 
         $driverOptions = [\PDO::ATTR_CURSOR => \PDO::CURSOR_FWDONLY];
 
@@ -74,35 +84,13 @@ class PdoSource implements SourceInterface
         while ($row = $stmt->fetch(\PDO::FETCH_OBJ)) {
             $agent = trim($row->agent);
 
-            $test = [
-                'ua'         => $agent,
-                'properties' => [
-                    'Browser_Name'            => null,
-                    'Browser_Type'            => null,
-                    'Browser_Bits'            => null,
-                    'Browser_Maker'           => null,
-                    'Browser_Modus'           => null,
-                    'Browser_Version'         => null,
-                    'Platform_Codename'       => null,
-                    'Platform_Marketingname'  => null,
-                    'Platform_Version'        => null,
-                    'Platform_Bits'           => null,
-                    'Platform_Maker'          => null,
-                    'Platform_Brand_Name'     => null,
-                    'Device_Name'             => null,
-                    'Device_Maker'            => null,
-                    'Device_Type'             => null,
-                    'Device_Pointing_Method'  => null,
-                    'Device_Dual_Orientation' => null,
-                    'Device_Code_Name'        => null,
-                    'Device_Brand_Name'       => null,
-                    'RenderingEngine_Name'    => null,
-                    'RenderingEngine_Version' => null,
-                    'RenderingEngine_Maker'   => null,
-                ],
-            ];
+            $request  = (new GenericRequestFactory())->createRequestForUserAgent($agent);
+            $browser  = new Browser(null);
+            $device   = new Device(null, null);
+            $platform = new Os(null, null);
+            $engine   = new Engine(null);
 
-            yield [$agent => $test];
+            yield $agent => new Result($request, $device, $platform, $browser, $engine);
         }
     }
 }
